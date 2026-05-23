@@ -1,566 +1,331 @@
-# React Frontend for Enterprise RAG SOP Assistant
+# DocuMind Enterprise - AI-Powered SOP Assistant
 
-This frontend will:
+An enterprise-grade Retrieval Augmented Generation (RAG) application for internal corporate knowledge management. DocuMind Enterprise ingests corporate PDF documents and provides intelligent, context-grounded answers directly from your documentation.
 
-* Upload PDFs
-* Send chat questions to backend
-* Display AI answers
-* Show citations
-* Maintain chat history
-* Connect with FastAPI backend
+## Overview
+
+DocuMind Enterprise is an AI-powered SOP Assistant designed to:
+- **Ingest** corporate PDF documents securely
+- **Parse & Clean** text with intelligent preprocessing
+- **Chunk** documents strategically for optimal retrieval
+- **Generate** semantic embeddings for all chunks
+- **Store** embeddings in vector databases
+- **Retrieve** relevant context using semantic search
+- **Answer** user questions ONLY from retrieved document context
+- **Cite** sources with page numbers and document references
+- **Refuse** hallucinated or out-of-context answers
+- **Stream** responses in real-time
+- **Remember** conversation history for context-aware responses
+
+**Key Principle:** This system acts as an enterprise-safe AI that answers strictly from uploaded documents and refuses external/general knowledge questions.
 
 ---
 
-# Frontend Folder Structure
+## Tech Stack
 
-```bash
-frontend/
+### Frontend
+- **React/Next.js** - Modern UI framework
+- **Real-time Streaming Chat UI** - ChatGPT-like experience
+- **Citation Display** - Show sources and page numbers
+
+### Backend
+- **Python 3.11+** - Core language
+- **FastAPI** - High-performance async API
+- **Async endpoints** - Non-blocking request handling
+- **Streaming responses** - Token-by-token response delivery
+
+### RAG & AI Core
+- **LangChain** - Orchestrate RAG pipeline
+- **HuggingFace Embeddings** - Generate semantic embeddings
+- **ChromaDB** - Local vector database (default)
+- **Pinecone** - Cloud vector database (optional upgrade)
+- **Ollama** - Run local LLMs
+- **Models:** Mistral or Llama3 - Open-source LLMs
+
+### Document Processing
+- **Unstructured.io / PyPDF** - PDF parsing
+- **Recursive Chunking** - Intelligent text splitting
+- **Metadata Extraction** - Preserve document structure
+- **Source Tracking** - Link answers to source documents
+
+### Deployment
+- **Docker** - Containerization
+- **Docker Compose** - Multi-container orchestration
+- **Environment Variables** - Configuration management
+
+---
+
+## Core Features
+
+### 1. Document Ingestion Pipeline
+- Upload PDF documents via REST API
+- Automatic text extraction and cleaning
+- Recursive chunking with overlap for context preservation
+- Metadata extraction (title, author, page numbers)
+- Batch processing support
+
+### 2. Semantic Retrieval
+- Vector similarity search
+- Context-aware retrieval using conversation history
+- Configurable retrieval parameters (top-k results, similarity threshold)
+- Source document tracking
+
+### 3. Response Generation
+- Grounded responses from retrieved context only
+- Automatic refusal for out-of-context questions
+- Source citations with page numbers
+- Conversation memory for follow-up questions
+
+### 4. Streaming Responses
+- Token-by-token response streaming
+- Real-time frontend UI updates
+- ChatGPT-like user experience
+
+### 5. Safety & Governance
+- Strictly grounded answers (no hallucinations)
+- Explicit refusal for unanswerable questions
+- Source citation for transparency
+- Audit trail of queries and responses
+
+---
+
+## Project Architecture
+
+### Folder Structure
+```
+documind-enterprise/
+├── backend/
+│   ├── ingestion/          # PDF parsing & chunking
+│   ├── rag/               # RAG pipeline & retrieval
+│   ├── api/               # FastAPI endpoints
+│   ├── prompts/           # LLM system prompts
+│   ├── services/          # Business logic services
+│   ├── utils/             # Helper functions
+│   ├── config.py          # Configuration management
+│   ├── main.py            # FastAPI app entry point
+│   └── requirements.txt    # Python dependencies
 │
-├── public/
+├── frontend/
+│   ├── src/
+│   │   ├── components/    # React components
+│   │   ├── pages/         # Page components
+│   │   ├── styles/        # Tailwind CSS
+│   │   └── utils/         # Frontend utilities
+│   ├── package.json
+│   └── tailwind.config.js
 │
-├── src/
-│   │
-│   ├── components/
-│   │   ├── ChatBox.jsx
-│   │   ├── MessageBubble.jsx
-│   │   ├── UploadPdf.jsx
-│   │   └── Navbar.jsx
-│   │
-│   ├── services/
-│   │   └── api.js
-│   │
-│   ├── pages/
-│   │   └── Home.jsx
-│   │
-│   ├── App.jsx
-│   ├── main.jsx
-│   └── index.css
-│
-├── package.json
-└── vite.config.js
+├── docker-compose.yml     # Multi-container setup
+├── Dockerfile             # Backend container
+└── README.md             # This file
+```
+
+### Data Flow Architecture
+```
+User Query
+    ↓
+[FastAPI Endpoint] → Validate Input
+    ↓
+[Retrieval Service] → Vector Search (ChromaDB)
+    ↓
+[Retrieved Context] → Top K Similar Chunks
+    ↓
+[LLM Service] → Generate Answer from Context
+    ↓
+[Streaming Handler] → Token-by-Token Stream
+    ↓
+[Frontend UI] → Display Response + Citations
 ```
 
 ---
 
-# STEP 1 — CREATE REACT PROJECT
+## Key Design Decisions
 
-Run:
+### Why ChromaDB?
+- Lightweight, serverless vector database
+- Perfect for initial development and small deployments
+- Python-native with easy integration
+- No infrastructure overhead
+- Pinecone as upgrade path for scale
 
+### Why FastAPI?
+- Async by default (non-blocking I/O)
+- Automatic OpenAPI documentation
+- Built-in streaming support
+- High performance with minimal boilerplate
+- Ideal for real-time LLM applications
+
+### Why LangChain?
+- Standardized RAG pipeline components
+- Abstraction over multiple LLMs and embeddings
+- Built-in prompt management
+- Memory and conversation support
+- Reduces boilerplate code
+
+### Why Streaming?
+- Better user experience (no long waits)
+- Token-by-token rendering matches ChatGPT
+- Reduced latency perception
+- More interactive feel
+
+---
+
+## Installation & Setup
+
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- Docker & Docker Compose (optional)
+- 8GB+ RAM (for local LLMs)
+
+### Quick Start
+
+#### 1. Backend Setup
 ```bash
-npx create-react-app frontend
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-Then:
-
+#### 2. Frontend Setup
 ```bash
 cd frontend
 npm install
-```
-
-Install Bootstrap:
-
-```bash
-npm install bootstrap axios
-```
-
-This project now uses:
-
-* React
-* Bootstrap CSS
-* Normal CSS
-* Axios
-
-No Tailwind CSS is used.
-
-````
-
----
-
-# STEP 2 — IMPORT BOOTSTRAP
-
-# src/index.js
-
-```javascript
-import React from "react";
-import ReactDOM from "react-dom/client";
-import App from "./App";
-import "bootstrap/dist/css/bootstrap.min.css";
-import "./index.css";
-
-const root = ReactDOM.createRoot(document.getElementById("root"));
-
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
-````
-
----
-
-# STEP 3 — NORMAL CSS
-
-# src/index.css
-
-```css
-body {
-  margin: 0;
-  padding: 0;
-  background-color: #111827;
-  color: white;
-  font-family: Arial, sans-serif;
-}
-
-.chat-container {
-  height: 600px;
-  overflow-y: auto;
-}
-
-.user-message {
-  background-color: #0d6efd;
-  color: white;
-  padding: 12px;
-  border-radius: 15px;
-  max-width: 70%;
-  margin-left: auto;
-}
-
-.ai-message {
-  background-color: #374151;
-  color: white;
-  padding: 12px;
-  border-radius: 15px;
-  max-width: 70%;
-}
-```
-
----
-
-# src/index.css
-
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-body {
-  margin: 0;
-  padding: 0;
-  background-color: #111827;
-  color: white;
-  font-family: Arial, sans-serif;
-}
-```
-
----
-
-# STEP 4 — API SERVICE
-
-# src/services/api.js
-
-```javascript
-import axios from "axios";
-
-const API = axios.create({
-  baseURL: "http://localhost:8000",
-});
-
-export default API;
-```
-
----
-
-# STEP 4 — NAVBAR COMPONENT
-
-# src/components/Navbar.jsx
-
-```javascript
-const Navbar = () => {
-  return (
-    <div className="bg-dark p-3 border-bottom border-secondary">
-      <h1 className="text-center fw-bold text-light">
-        DocuMind Enterprise AI
-      </h1>
-    </div>
-  );
-};
-
-export default Navbar;
-```
-
----
-
-# STEP 5 — PDF UPLOAD COMPONENT
-
-# src/components/UploadPdf.jsx
-
-```javascript
-import { useState } from "react";
-import API from "../services/api";
-
-const UploadPdf = () => {
-  const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  const handleUpload = async () => {
-    if (!file) {
-      alert("Please select a PDF");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      setLoading(true);
-
-      const response = await API.post("/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      alert(response.data.message);
-    } catch (error) {
-      console.error(error);
-      alert("Upload failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="card bg-dark text-light p-4 mb-4">
-      <h2 className="h5 mb-3">
-        Upload PDF
-      </h2>
-
-      <input
-        type="file"
-        accept="application/pdf"
-        onChange={(e) => setFile(e.target.files[0])}
-        className="form-control mb-3"
-      />
-
-      <button
-        onClick={handleUpload}
-        className="btn btn-primary"
-      >
-        {loading ? "Uploading..." : "Upload PDF"}
-      </button>
-    </div>
-  );
-};
-
-export default UploadPdf;
-```
-
----
-
-# STEP 6 — MESSAGE BUBBLE
-
-# src/components/MessageBubble.jsx
-
-```javascript
-const MessageBubble = ({ message }) => {
-  const isUser = message.role === "user";
-
-  return (
-    <div
-      className="mb-3 d-flex flex-column"
-    >
-      <div
-        className={isUser ? "user-message" : "ai-message"}
-      >
-        <p>{message.content}</p>
-
-        {message.sources && (
-          <div className="mt-3 small text-light">
-            <p className="font-bold">Sources:</p>
-
-            {message.sources.map((source, index) => (
-              <div key={index}>
-                {source.document} - Page {source.page}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default MessageBubble;
-```
-
----
-
-# STEP 7 — CHATBOX COMPONENT
-
-# src/components/ChatBox.jsx
-
-```javascript
-import { useState } from "react";
-import API from "../services/api";
-import MessageBubble from "./MessageBubble";
-
-const ChatBox = () => {
-  const [question, setQuestion] = useState("");
-
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      content: "Hello! Upload a PDF and ask questions.",
-    },
-  ]);
-
-  const [loading, setLoading] = useState(false);
-
-  const sendQuestion = async () => {
-    if (!question.trim()) return;
-
-    const userMessage = {
-      role: "user",
-      content: question,
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-
-    const currentQuestion = question;
-
-    setQuestion("");
-
-    try {
-      setLoading(true);
-
-      const response = await API.post("/chat", {
-        question: currentQuestion,
-      });
-
-      const aiMessage = {
-        role: "assistant",
-        content: response.data.answer,
-        sources: response.data.sources,
-      };
-
-      setMessages((prev) => [...prev, aiMessage]);
-    } catch (error) {
-      console.error(error);
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Something went wrong.",
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="card bg-dark text-light p-4">
-      <div className="chat-container mb-4">
-        {messages.map((msg, index) => (
-          <MessageBubble
-            key={index}
-            message={msg}
-          />
-        ))}
-
-        {loading && (
-          <div className="text-secondary">
-            AI is thinking...
-          </div>
-        )}
-      </div>
-
-      <div className="d-flex gap-2">
-        <input
-          type="text"
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Ask a question..."
-          className="form-control bg-secondary text-light border-0"
-        />
-
-        <button
-          onClick={sendQuestion}
-          className="btn btn-success px-4"
-        >
-          Send
-        </button>
-      </div>
-    </div>
-  );
-};
-
-export default ChatBox;
-```
-
----
-
-# STEP 8 — HOME PAGE
-
-# src/pages/Home.jsx
-
-```javascript
-import Navbar from "../components/Navbar";
-import UploadPdf from "../components/UploadPdf";
-import ChatBox from "../components/ChatBox";
-
-const Home = () => {
-  return (
-    <div className="min-vh-100 bg-dark text-light">
-      <Navbar />
-
-      <div className="container py-4">
-        <UploadPdf />
-
-        <ChatBox />
-      </div>
-    </div>
-  );
-};
-
-export default Home;
-```
-
----
-
-# STEP 9 — APP.jsx
-
-# src/App.jsx
-
-```javascript
-import Home from "./pages/Home";
-
-function App() {
-  return <Home />;
-}
-
-export default App;
-```
-
----
-
-# HOW THIS FRONTEND WORKS
-
-# FLOW 1 — PDF Upload
-
-```text
-User uploads PDF
-↓
-UploadPdf.jsx
-↓
-POST /upload
-↓
-FastAPI backend
-↓
-Ingestion pipeline runs
-↓
-PDF stored in vector DB
-```
-
----
-
-# FLOW 2 — Chat Question
-
-```text
-User asks question
-↓
-ChatBox.jsx
-↓
-POST /chat
-↓
-FastAPI backend
-↓
-Retriever searches chunks
-↓
-LLM generates answer
-↓
-Frontend receives answer
-↓
-MessageBubble displays response
-```
-
----
-
-# EXPECTED BACKEND RESPONSE
-
-# /chat response
-
-```json
-{
-  "answer": "Employees can claim reimbursement within 7 days.",
-  "sources": [
-    {
-      "document": "employee_policy.pdf",
-      "page": 14
-    }
-  ]
-}
-```
-
----
-
-# RUN FRONTEND
-
-```bash
 npm run dev
 ```
 
-Frontend runs on:
-
+#### 3. Run with Docker Compose
 ```bash
-http://localhost:5173
+docker-compose up --build
 ```
 
 ---
 
-# RUN BACKEND
+## API Endpoints
 
-```bash
-uvicorn app.main:app --reload
+### Document Ingestion
+- `POST /api/documents/upload` - Upload PDF document
+- `GET /api/documents/` - List uploaded documents
+- `DELETE /api/documents/{doc_id}` - Delete document
+
+### Query & Chat
+- `POST /api/query` - Submit question (returns streaming response)
+- `POST /api/chat` - Chat endpoint with conversation memory
+- `GET /api/chat/history/{session_id}` - Get conversation history
+
+### Retrieval (Debug)
+- `POST /api/retrieve` - Test retrieval pipeline
+- `GET /api/embeddings/status` - Check vector DB status
+
+---
+
+## Development Roadmap
+
+### Phase 1: Foundation
+- [ ] Backend architecture setup
+- [ ] FastAPI endpoints structure
+- [ ] Document ingestion pipeline
+- [ ] Vector database integration
+
+### Phase 2: Core RAG
+- [ ] Retrieval pipeline implementation
+- [ ] LLM integration (Ollama + Mistral/Llama3)
+- [ ] Response generation with citations
+- [ ] Context grounding & safety checks
+
+### Phase 3: Frontend & UX
+- [ ] React chat interface
+- [ ] Streaming response renderer
+- [ ] Citation display component
+- [ ] Document upload UI
+
+### Phase 4: Production Ready
+- [ ] Conversation memory
+- [ ] Docker containerization
+- [ ] Error handling & logging
+- [ ] Performance optimization
+
+### Phase 5: Advanced Features (Optional)
+- [ ] Hybrid retrieval (keyword + semantic)
+- [ ] Parent document retrieval
+- [ ] Pinecone integration
+- [ ] Multi-document reasoning
+
+---
+
+## Safety & Governance
+
+### Core Safety Principles
+1. **No Hallucinations** - Answer only from retrieved context
+2. **Explicit Refusal** - Refuse unanswerable questions clearly
+3. **Source Citations** - Always show where answers come from
+4. **Context Limitation** - Reject questions outside document scope
+
+### Example Response Patterns
 ```
-
-Backend runs on:
-
-```bash
-http://localhost:8000
+✅ GOOD: "According to page 3 of the SOP document: [answer]"
+✅ GOOD: "This information is not available in the uploaded documents."
+❌ BAD: "Based on general knowledge, [hallucinated answer]"
 ```
 
 ---
 
-# IMPORTANT NEXT STEP
+## Deployment Strategy
 
-Your next backend tasks:
+### Local Development
+- Run backend & frontend locally
+- ChromaDB stores vectors locally
+- Ollama runs on local machine
 
-1. Create /upload API
-2. Create ingestion pipeline
-3. Create /chat API
-4. Connect ChromaDB
-5. Connect Ollama
-6. Add streaming response
-7. Add memory
-8. Add authentication later
+### Docker Deployment
+- Backend: Python FastAPI container
+- Frontend: Node.js / Next.js container
+- ChromaDB: Persistent volume
+- Network: Docker network for service communication
+
+### Production Upgrade Path
+1. Replace ChromaDB with Pinecone
+2. Use hosted LLMs (OpenAI, Anthropic)
+3. Add authentication & authorization
+4. Implement audit logging
+5. Deploy on Kubernetes (optional)
 
 ---
 
-# FUTURE IMPROVEMENTS
+## Contributing Guidelines
 
-Later you can add:
+### Code Standards
+- **Modularity** - Single responsibility principle
+- **Readability** - Self-documenting code with comments
+- **Error Handling** - Graceful failure with meaningful errors
+- **Testing** - Unit tests for critical components
+- **Documentation** - Docstrings for all functions
 
-* Dark/light mode
-* Streaming text
-* Markdown rendering
-* PDF preview
-* Multiple chats
-* Authentication
-* Chat history
-* Admin dashboard
-* Voice input
-* Typing animation
-* Token streaming
-* Conversation memory
+### Development Workflow
+1. Feature branches (`git checkout -b feature/name`)
+2. Small, focused commits
+3. Pull request review process
+4. Test before merge
+
+---
+
+## Learning Resources
+
+- [LangChain Documentation](https://python.langchain.com/)
+- [FastAPI Tutorial](https://fastapi.tiangolo.com/)
+- [ChromaDB Guide](https://docs.trychroma.com/)
+- [RAG Papers & Research](https://arxiv.org/)
+
+---
+
+## License
+
+[Add your license here]
+
+## Support
+
+For questions or issues, contact the development team.
+
+---
+
+**Built by a collaborative team of developers. Enterprise-grade. Production-ready. Beginner-friendly.**
