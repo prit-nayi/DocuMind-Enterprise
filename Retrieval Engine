@@ -1,1 +1,153 @@
 
+Retrieval Engine
+Goal
+
+Build the core Retrieval-Augmented Generation (RAG) chat engine that:
+
+Retrieves the most relevant document chunks.
+Answers only from retrieved context.
+Maintains conversation history.
+Prevents hallucinations.
+Refuses out-of-scope questions.
+
+2 Architecture
+User Question
+      │
+      ▼
+History Aware Retriever
+      │
+      ▼
+Hybrid Search
+(BM25 + Vector Search)
+      │
+      ▼
+Top Relevant Documents
+      │
+      ▼
+Context Injection
+      │
+      ▼
+GPT-4
+      │
+      ▼Task 1: Create Context-Only System Prompt
+
+Th
+      │
+      ▼
+Sources + Citations
+
+Task 1: Create Context-Only System Prompt
+This is the most important safety component.
+
+Task 2: Create History Aware Retriever
+
+This allows follow-up questions.
+
+Example:
+
+User
+What is the refund policy?
+Assistant
+Employees can request refunds within 30 days.
+User
+What documents are required?
+
+Retriever converts:
+
+What documents are required?
+
+to
+
+What documents are required for a refund request?
+
+retrieval/history_retriever.py
+
+Task 3: Implement Hybrid Search
+
+Enterprise RAG should not rely solely on vector search.
+
+Combine:
+
+Semantic Search
+
+Task 4: Build QA Chain
+
+The QA chain combines:
+
+Retrieved Context
+System Prompt
+User Question
+
+Task 5: Create Retrieval Chain
+
+Combine:
+
+History Retriever
+QA Chain
+
+Task 6: Hallucination Guardrails
+
+Even with retrieval, the model can sometimes answer using prior knowledge.
+
+Add a second validation layer.
+
+Task 7: Return Citations
+
+Every retrieved document already contains metadata.
+
+Example Query Flow
+User
+How do I get money back?
+Retriever Returns
+Refund Policy
+
+Employees may request
+a refund within 30 days.
+
+LLM Response
+Employees may request a refund
+within 30 days of purchase.
+
+Source:
+Employee_Handbook.pdf
+Page 127
+Hallucination Test (Mandatory)
+Query
+Who is the President of the USA?
+
+Retrieval Result
+No relevant documents
+Expected Response
+I don't know.
+
+This information is not available
+in the provided documents.
+
+  No hallucination
+
+✅ Context-only answer
+
+✅ Enterprise compliant
+
+
+Week 2 Deliverables Checklist
+Deliverable	Status
+Context-only Prompt	✅
+History-Aware Retriever	✅
+Hybrid Search	✅
+QA Chain	✅
+Retrieval Chain	✅
+Hallucination Guardrails	✅
+Citation Support	✅
+External Knowledge Refusal	✅
+
+End of Week 2 Outcome
+
+A fully functional Retrieval Engine that:
+
+Retrieves relevant chunks accurately.
+Handles conversational follow-up questions.
+Uses hybrid retrieval (BM25 + semantic search).
+Answers only from corporate documents.
+Returns source citations and page numbers.
+Refuses questions outside the knowledge base.
