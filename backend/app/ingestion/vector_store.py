@@ -14,9 +14,12 @@ def store_in_chroma(
 ):
 
     for index, chunk in enumerate(chunks):
+        metadata = dict(chunk.metadata or {})
+        chunk_id = metadata.get("chunk_id", str(index))
 
         collection.add(
             documents=[chunk.page_content],
             embeddings=[embeddings[index].tolist()],
-            ids=[str(index)]
+            metadatas=[metadata],
+            ids=[chunk_id]
         )
