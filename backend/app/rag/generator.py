@@ -3,8 +3,8 @@ def generate_answer(
     chunks
 ):
 
-    context = \"\\n\".join(chunks)
+    context = "\n".join(chunks)
 
-    answer = f\"Answer generated from context:\\n\\n{context[:500]}\"
+    answer = f"Answer generated from context:\n\n{context[:500]}"
 
     return answer

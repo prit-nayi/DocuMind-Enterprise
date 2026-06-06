@@ -1,17 +1,11 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-model = SentenceTransformer(
-    \"all-MiniLM-L6-v2\"
-)
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
-client = chromadb.PersistentClient(
-    path=\"chroma_db\"
-)
+client = chromadb.PersistentClient(path="chroma_db")
 
-collection = client.get_collection(
-    name=\"documents\"
-)
+collection = client.get_collection(name="documents")
 
 def retrieve_chunks(question):
 
@@ -24,4 +18,4 @@ def retrieve_chunks(question):
         n_results=3
     )
 
-    return results[\"documents\"][0]
+    return results["documents"][0]
