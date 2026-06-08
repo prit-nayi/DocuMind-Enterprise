@@ -1,0 +1,17 @@
+# Python related
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+backend/Venv/
+
+# Environment files
+backend/.env
+
+# Optional databases
+backend/chroma_db/
+
+# Editor files
+.vscode/
+.idea/

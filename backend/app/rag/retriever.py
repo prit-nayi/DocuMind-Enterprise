@@ -1,21 +1,47 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+from app.config import settings
 
-client = chromadb.PersistentClient(path="chroma_db")
+model = SentenceTransformer(settings.embedding_model)
 
-collection = client.get_collection(name="documents")
+client = chromadb.PersistentClient(path=settings.chroma_persist_dir)
+collection = client.get_or_create_collection(name=settings.collection_name)
 
-def retrieve_chunks(question):
 
-    query_embedding = model.encode(question)
+def _build_query_text(question, history=None):
+    if not history:
+        return question
+
+    history_lines = []
+    for turn in history[-settings.max_conversation_turns:]:
+        role = turn.get("role", "user").capitalize()
+        content = turn.get("content", "")
+        history_lines.append(f"{role}: {content}")
+
+    return "\n".join(history_lines) + "\nCurrent question: " + question
+
+
+def retrieve_chunks(question, history=None):
+    query_text = _build_query_text(question, history)
+    query_embedding = model.encode(query_text)
 
     results = collection.query(
-        query_embeddings=[
-            query_embedding.tolist()
-        ],
-        n_results=3
+        query_embeddings=[query_embedding.tolist()],
+        n_results=settings.top_k_results,
+        include=["documents", "metadatas", "distances"],
     )
 
-    return results["documents"][0]
+    documents = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+    distances = results.get("distances", [[]])[0]
+
+    chunks = []
+    for document, metadata, distance in zip(documents, metadatas, distances):
+        chunks.append({
+            "text": document,
+            "metadata": metadata or {},
+            "distance": distance,
+        })
+
+    return chunks
