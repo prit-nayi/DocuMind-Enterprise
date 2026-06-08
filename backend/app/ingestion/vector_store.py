@@ -1,11 +1,13 @@
 import chromadb
 
+from app.config import settings
+
 client = chromadb.PersistentClient(
-    path="chroma_db"
+    path=settings.chroma_persist_dir
 )
 
 collection = client.get_or_create_collection(
-    name="documents"
+    name=settings.collection_name
 )
 
 def store_in_chroma(

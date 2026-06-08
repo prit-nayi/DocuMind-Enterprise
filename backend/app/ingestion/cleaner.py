@@ -1,14 +1,18 @@
-from langchain.schema import Document
+from dataclasses import dataclass
+from typing import Any, Dict, Iterable, List
 
-def clean_text(documents):
+@dataclass
+class Document:
+    page_content: str
+    metadata: Dict[str, Any]
 
+
+def clean_text(documents: Iterable[Any]) -> List[Document]:
     cleaned = []
 
     for doc in documents:
-
-        text = doc.page_content.strip()
-        metadata = dict(doc.metadata or {})
-
+        text = getattr(doc, "page_content", "").strip()
+        metadata = dict(getattr(doc, "metadata", {}) or {})
         cleaned.append(Document(page_content=text, metadata=metadata))
 
     return cleaned
