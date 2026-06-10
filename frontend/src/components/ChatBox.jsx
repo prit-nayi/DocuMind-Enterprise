@@ -10,16 +10,19 @@ const ChatBox = () => {
       content: "Hello! Upload a PDF and ask questions.",
     },
   ]);
+
   const [loading, setLoading] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
-
-  const streamingRef = useRef("");
-  const sourcesRef = useRef([]);
+  const [streamingSources, setStreamingSources] = useState([]);
   const chatEndRef = useRef(null);
 
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamingMessage]);
+
+  const streamingRef = useRef("");
+  const sourcesRef = useRef([]);
 
   const sendQuestion = async () => {
     if (!question.trim()) return;
@@ -31,45 +34,58 @@ const ChatBox = () => {
 
     const currentMessages = [...messages, userMessage];
     setMessages(currentMessages);
+    const currentQuestion = question;
     setQuestion("");
     setStreamingMessage("");
+    setStreamingSources([]);
     streamingRef.current = "";
     sourcesRef.current = [];
- 
+
     try {
       setLoading(true);
 
+      // Use streaming API for real-time token delivery
       await streamChat(
-        question,
+        currentQuestion,
         currentMessages,
+        // onToken callback - add each token to streaming message
         (token) => {
           streamingRef.current += token;
           setStreamingMessage(streamingRef.current);
         },
+        // onSources callback - update sources when received
         (sources) => {
           sourcesRef.current = sources;
+          setStreamingSources(sources);
         },
+        // onComplete callback - finalize the message
         () => {
-          const aiMessage = {
-            role: "assistant",
-            content: streamingRef.current.trim() || "No response received.",
-            sources: sourcesRef.current,
-          };
-          setMessages((prev) => [...prev, aiMessage]);
+          const finalContent = streamingRef.current.trim();
+          if (finalContent) {
+            const aiMessage = {
+              role: "assistant",
+              content: finalContent,
+              sources: sourcesRef.current,
+            };
+            setMessages((prev) => [...prev, aiMessage]);
+          }
           streamingRef.current = "";
           sourcesRef.current = [];
           setStreamingMessage("");
+          setStreamingSources([]);
         },
+        // onError callback - handle errors
         (error) => {
           const errorMessage = {
             role: "assistant",
-            content: `Error: ${error || "Unable to get response."}`,
+            content: `Error: ${error || "Failed to get response"}`,
             sources: [],
           };
           setMessages((prev) => [...prev, errorMessage]);
           streamingRef.current = "";
           sourcesRef.current = [];
           setStreamingMessage("");
+          setStreamingSources([]);
         }
       );
     } catch (error) {
@@ -85,7 +101,8 @@ const ChatBox = () => {
     }
   };
 
-  const handleKeyDown = (e) => {
+  // Handle Enter key press
+  const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey && !loading) {
       e.preventDefault();
       sendQuestion();
@@ -93,57 +110,110 @@ const ChatBox = () => {
   };
 
   return (
-    <div className="glass-card p-4 chat-panel">
-      <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 mb-4">
-        <div>
-          <p className="text-secondary mb-2 text-uppercase" style={{ letterSpacing: '0.2em', fontSize: '0.78rem' }}>
-            Chat interface
-          </p>
-          <h3 className="section-heading mb-0">Ask questions in natural language</h3>
-        </div>
-        <div className="status-chip">
-          {loading ? "Processing..." : "Ready to answer"}
-        </div>
-      </div>
-
-      <div className="chat-body mb-4">
+    <div className="card bg-dark text-light p-4">
+      <div className="chat-container mb-4" style={{ maxHeight: "500px", overflowY: "auto" }}>
         {messages.map((msg, index) => (
-          <MessageBubble key={index} message={msg} />
+          <MessageBubble
+            key={index}
+            message={msg}
+          />
         ))}
 
+        {/* Streaming message display with typewriter effect */}
         {streamingMessage && (
-          <div className="bubble bubble-ai bubble-typing">
-            <div className="bubble-meta">Streaming response</div>
-            <p className="bubble-text mb-0">{streamingMessage}<span className="text-white">▌</span></p>
+          <div className="d-flex justify-content-start mb-3">
+            <div 
+              className="bg-secondary text-light p-3 rounded"
+              style={{ maxWidth: "80%", wordWrap: "break-word" }}
+            >
+              {/* Typewriter effect: show text with cursor */}
+              <span>{streamingMessage}</span>
+              <span 
+                className="ms-1" 
+                style={{
+                  display: "inline-block",
+                  width: "8px",
+                  height: "1.2em",
+                  backgroundColor: "white",
+                  animation: "blink 0.7s infinite",
+                  marginLeft: "2px",
+                }}
+              />
+            </div>
           </div>
         )}
 
-        {!streamingMessage && loading && (
-          <div className="text-muted small">AI is thinking<span className="ms-2">...</span></div>
+        {loading && !streamingMessage && (
+          <div className="text-secondary">
+            <span>AI is thinking</span>
+            <span 
+              className="ms-2" 
+              style={{
+                display: "inline-block",
+                animation: "blink 0.7s infinite",
+              }}
+            >
+              ...
+            </span>
+          </div>
         )}
 
         <div ref={chatEndRef} />
       </div>
 
-      <div className="d-flex flex-column flex-md-row gap-2">
+      <div className="d-flex gap-2">
         <input
           type="text"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          onKeyDown={handleKeyDown}
+          onKeyPress={handleKeyPress}
           placeholder="Ask a question..."
           className="form-control bg-secondary text-light border-0"
           disabled={loading}
         />
+
         <button
-          type="button"
           onClick={sendQuestion}
-          className="btn btn-accent px-4"
+          className="btn btn-success px-4"
           disabled={loading || !question.trim()}
         >
-          {loading ? "Sending..." : "Send"}
+          {loading ? "..." : "Send"}
         </button>
       </div>
+
+      {/* CSS for blinking cursor animation */}
+      <style>{`
+        @keyframes blink {
+          0%, 50% {
+            opacity: 1;
+          }
+          51%, 100% {
+            opacity: 0;
+          }
+        }
+        
+        .chat-container {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+        
+        .chat-container::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        .chat-container::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        
+        .chat-container::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 3px;
+        }
+        
+        .chat-container::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+      `}</style>
     </div>
   );
 };

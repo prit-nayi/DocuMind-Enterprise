@@ -1,18 +1,41 @@
+from typing import Any, Dict
+
 from app.config import settings
-# from langchain.schema import Document
-from langchain_text_splitters import (
-    RecursiveCharacterTextSplitter
-)
+
+try:
+    from langchain_core.documents import Document
+except ImportError:
+    try:
+        from langchain.schema import Document
+    except ImportError:
+        from dataclasses import dataclass
+
+        @dataclass
+        class Document:
+            page_content: str
+            metadata: Dict[str, Any]
+
+try:
+    from langchain_text_splitters import (
+        RecursiveCharacterTextSplitter
+    )
+except Exception:
+    RecursiveCharacterTextSplitter = None
 
 
 def split_chunks(cleaned_docs):
+
+    if RecursiveCharacterTextSplitter is None:
+        raise RuntimeError(
+            "Missing dependency: langchain_text_splitters. Install it to use chunking."
+        )
 
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=settings.chunk_size,
         chunk_overlap=settings.chunk_overlap
     )
 
-    chunks = splitter.create_documents(cleaned_docs)
+    chunks = splitter.split_documents(cleaned_docs)
 
     updated_chunks = []
     for index, chunk in enumerate(chunks):

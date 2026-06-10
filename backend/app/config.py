@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     llm_model: str = os.getenv("LLM_MODEL", "llama3")
     llm_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    hf_model: str = os.getenv("HF_MODEL", "google/flan-t5-small")
+    hf_model: str = os.getenv("HF_MODEL", "Qwen/Qwen2.5-7B-Instruct")
     huggingfacehub_api_token: str = os.getenv("HUGGINGFACEHUB_API_TOKEN", "")
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
     top_k_results: int = int(os.getenv("TOP_K_RESULTS", "5"))
