@@ -7,7 +7,7 @@ const UploadPdf = () => {
 
   const handleUpload = async () => {
     if (!file) {
-      alert("Please select a PDF");
+      alert("Please select a PDF file to upload.");
       return;
     }
 
@@ -16,40 +16,56 @@ const UploadPdf = () => {
 
     try {
       setLoading(true);
-
       const response = await API.post("/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
-
       alert(response.data.message);
+      setFile(null);
     } catch (error) {
       console.error(error);
-      alert("Upload failed");
+      alert("Upload failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="card bg-dark text-light p-4 mb-4">
-      <h2 className="h5 mb-3">
-        Upload PDF
-      </h2>
+    <div className="glass-card upload-panel" style={{ padding: '2.5rem' }}>
+      <div className="panel-header">
+        <div>
+          <h3 className="panel-title">📄 Upload Document</h3>
+          <p className="panel-subtitle">Add your PDF to start asking questions</p>
+        </div>
+        <span className="status-chip">PDF Files</span>
+      </div>
 
-      <input
-        type="file"
-        accept="application/pdf"
-        onChange={(e) => setFile(e.target.files[0])}
-        className="form-control mb-3"
-      />
+      <div className="file-input-wrapper">
+        <input
+          type="file"
+          accept="application/pdf"
+          onChange={(e) => setFile(e.target.files[0])}
+          style={{
+            display: 'block',
+            textAlign: 'center',
+            padding: '2rem 1.5rem',
+          }}
+        />
+      </div>
+
+      {file && (
+        <div className="upload-file-info">
+          ✅ {file.name} ({(file.size / 1024).toFixed(1)} KB)
+        </div>
+      )}
 
       <button
+        type="button"
         onClick={handleUpload}
-        className="btn btn-primary"
+        className="btn-accent"
+        disabled={loading || !file}
+        style={{ width: '100%', marginTop: file ? '0.5rem' : '1.5rem' }}
       >
-        {loading ? "Uploading..." : "Upload PDF"}
+        {loading ? "⏳ Uploading..." : "Upload PDF"}
       </button>
     </div>
   );
