@@ -1,10 +1,17 @@
-from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List
 
-@dataclass
-class Document:
-    page_content: str
-    metadata: Dict[str, Any]
+try:
+    from langchain_core.documents import Document
+except ImportError:
+    try:
+        from langchain.schema import Document
+    except ImportError:
+        from dataclasses import dataclass
+
+        @dataclass
+        class Document:
+            page_content: str
+            metadata: Dict[str, Any]
 
 
 def clean_text(documents: Iterable[Any]) -> List[Document]:
