@@ -1,40 +1,90 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { streamChat } from "../services/api";
 import MessageBubble from "./MessageBubble";
+import UploadPdf from "./UploadPdf";
+import {
+  AttachIcon,
+  LogoIcon,
+  SearchDocIcon,
+  SendIcon,
+  SummaryIcon,
+  UploadIcon,
+} from "./Icons";
 
-const ChatBox = () => {
+const QUICK_ACTIONS = [
+  {
+    id: "summarize",
+    title: "Summarize Document",
+    description: "Get a concise overview of your uploaded PDF",
+    icon: SummaryIcon,
+    prompt: "Summarize the key points from the uploaded document.",
+  },
+  {
+    id: "search",
+    title: "Find Information",
+    description: "Search for specific details inside your documents",
+    icon: SearchDocIcon,
+    prompt: "What are the most important details in this document?",
+  },
+  {
+    id: "upload",
+    title: "Upload New PDF",
+    description: "Add a document to start asking questions",
+    icon: UploadIcon,
+    action: "upload",
+  },
+];
+
+const CATEGORY_CHIPS = [
+  { id: "all", label: "All" },
+  { id: "summary", label: "Summary", prompt: "Provide a brief summary of the document." },
+  { id: "search", label: "Search", prompt: "What topics does this document cover?" },
+  { id: "analysis", label: "Analysis", prompt: "Analyze the main themes and recommendations in the document." },
+];
+
+const isWelcomeState = (messages) => {
+  if (!messages || messages.length <= 1) return true;
+  return messages.length === 1 && messages[0].role === "assistant";
+};
+
+const ChatBox = ({
+  messages = [],
+  conversationTitle = "New Chat",
+  onAppendMessage = () => {},
+  onUpdateTitle = () => {},
+  onUploadClick,
+  fileInputRef,
+  onUploadComplete,
+  onUploadStatus,
+  uploadStatus,
+}) => {
   const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      content: "Hello! Upload a PDF and ask questions.",
-    },
-  ]);
-
   const [loading, setLoading] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
   const [streamingSources, setStreamingSources] = useState([]);
+  const [activeCategory, setActiveCategory] = useState("all");
   const chatEndRef = useRef(null);
-
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamingMessage]);
-
   const streamingRef = useRef("");
   const sourcesRef = useRef([]);
 
-  const sendQuestion = async () => {
-    if (!question.trim()) return;
+  const showWelcome = isWelcomeState(messages) && !streamingMessage && !loading;
 
-    const userMessage = {
-      role: "user",
-      content: question,
-    };
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, streamingMessage, loading]);
 
-    const currentMessages = [...messages, userMessage];
-    setMessages(currentMessages);
-    const currentQuestion = question;
+  const submitQuestion = async (text) => {
+    const trimmed = text.trim();
+    if (!trimmed || loading) return;
+
+    const userMessage = { role: "user", content: trimmed };
+    onAppendMessage(userMessage);
+
+    const isFirstUserMessage = messages.filter((m) => m.role === "user").length === 0;
+    if (isFirstUserMessage) {
+      onUpdateTitle(trimmed.slice(0, 48) + (trimmed.length > 48 ? "..." : ""));
+    }
+
     setQuestion("");
     setStreamingMessage("");
     setStreamingSources([]);
@@ -44,44 +94,37 @@ const ChatBox = () => {
     try {
       setLoading(true);
 
-      // Use streaming API for real-time token delivery
       await streamChat(
-        currentQuestion,
-        currentMessages,
-        // onToken callback - add each token to streaming message
+        trimmed,
+        [...messages, userMessage],
         (token) => {
           streamingRef.current += token;
           setStreamingMessage(streamingRef.current);
         },
-        // onSources callback - update sources when received
         (sources) => {
           sourcesRef.current = sources;
           setStreamingSources(sources);
         },
-        // onComplete callback - finalize the message
         () => {
           const finalContent = streamingRef.current.trim();
           if (finalContent) {
-            const aiMessage = {
+            onAppendMessage({
               role: "assistant",
               content: finalContent,
               sources: sourcesRef.current,
-            };
-            setMessages((prev) => [...prev, aiMessage]);
+            });
           }
           streamingRef.current = "";
           sourcesRef.current = [];
           setStreamingMessage("");
           setStreamingSources([]);
         },
-        // onError callback - handle errors
         (error) => {
-          const errorMessage = {
+          onAppendMessage({
             role: "assistant",
             content: `Error: ${error || "Failed to get response"}`,
             sources: [],
-          };
-          setMessages((prev) => [...prev, errorMessage]);
+          });
           streamingRef.current = "";
           sourcesRef.current = [];
           setStreamingMessage("");
@@ -90,130 +133,166 @@ const ChatBox = () => {
       );
     } catch (error) {
       console.error("Chat error:", error);
-      const errorMessage = {
+      onAppendMessage({
         role: "assistant",
         content: "Something went wrong. Please try again.",
         sources: [],
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle Enter key press
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter" && !e.shiftKey && !loading) {
-      e.preventDefault();
-      sendQuestion();
+  const handleQuickAction = (action) => {
+    if (action.action === "upload") {
+      onUploadClick?.();
+      return;
+    }
+    if (action.prompt) {
+      submitQuestion(action.prompt);
+    }
+  };
+
+  const handleCategoryClick = (chip) => {
+    setActiveCategory(chip.id);
+    if (chip.prompt) {
+      submitQuestion(chip.prompt);
+    }
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      submitQuestion(question);
     }
   };
 
   return (
-    <div className="card bg-dark text-light p-4">
-      <div className="chat-container mb-4" style={{ maxHeight: "500px", overflowY: "auto" }}>
-        {messages.map((msg, index) => (
-          <MessageBubble
-            key={index}
-            message={msg}
-          />
-        ))}
+    <div className="chat-panel">
+      <div className="chat-main-header">
+        <span className="chat-main-title">{conversationTitle}</span>
+        <span className="chat-main-status">
+          <span className="live-dot" />
+          Document Q&amp;A
+        </span>
+      </div>
 
-        {/* Streaming message display with typewriter effect */}
-        {streamingMessage && (
-          <div className="d-flex justify-content-start mb-3">
-            <div 
-              className="bg-secondary text-light p-3 rounded"
-              style={{ maxWidth: "80%", wordWrap: "break-word" }}
-            >
-              {/* Typewriter effect: show text with cursor */}
-              <span>{streamingMessage}</span>
-              <span 
-                className="ms-1" 
-                style={{
-                  display: "inline-block",
-                  width: "8px",
-                  height: "1.2em",
-                  backgroundColor: "white",
-                  animation: "blink 0.7s infinite",
-                  marginLeft: "2px",
-                }}
-              />
+      {showWelcome ? (
+        <div className="welcome-screen">
+          <div className="welcome-icon">
+            <LogoIcon />
+          </div>
+          <h1>How can I help with your documents?</h1>
+          <p>
+            Upload a PDF, ask questions, and get accurate answers with source
+            citations — powered by your enterprise RAG pipeline.
+          </p>
+
+          <div className="quick-actions">
+            {QUICK_ACTIONS.map((action) => {
+              const Icon = action.icon;
+              return (
+                <button
+                  key={action.id}
+                  type="button"
+                  className="quick-action-card"
+                  onClick={() => handleQuickAction(action)}
+                >
+                  <div className="quick-action-icon">
+                    <Icon />
+                  </div>
+                  <h3>{action.title}</h3>
+                  <p>{action.description}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="category-chips">
+            {CATEGORY_CHIPS.map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                className={`category-chip ${activeCategory === chip.id ? "active" : ""}`}
+                onClick={() => handleCategoryClick(chip)}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="chat-messages">
+          {messages.map((msg, index) => (
+            <MessageBubble key={index} message={msg} />
+          ))}
+
+          {streamingMessage && (
+            <MessageBubble
+              message={{ role: "assistant", content: streamingMessage, sources: streamingSources }}
+              isStreaming
+            />
+          )}
+
+          {loading && !streamingMessage && (
+            <div className="thinking-indicator">
+              <div className="thinking-dots">
+                <span />
+                <span />
+                <span />
+              </div>
+              Analyzing your documents...
             </div>
+          )}
+
+          <div ref={chatEndRef} />
+        </div>
+      )}
+
+      <div className="chat-input-area">
+        {uploadStatus && (
+          <div className={`upload-toast ${uploadStatus.type}`}>
+            {uploadStatus.message}
           </div>
         )}
 
-        {loading && !streamingMessage && (
-          <div className="text-secondary">
-            <span>AI is thinking</span>
-            <span 
-              className="ms-2" 
-              style={{
-                display: "inline-block",
-                animation: "blink 0.7s infinite",
-              }}
-            >
-              ...
-            </span>
-          </div>
-        )}
+        <div className="chat-input-wrapper">
+          <button
+            type="button"
+            className="chat-attach-btn"
+            onClick={onUploadClick}
+            aria-label="Upload PDF"
+            disabled={loading}
+          >
+            <AttachIcon />
+          </button>
 
-        <div ref={chatEndRef} />
+          <input
+            type="text"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask a question about your documents..."
+            disabled={loading}
+          />
+
+          <button
+            type="button"
+            className="chat-send-btn"
+            onClick={() => submitQuestion(question)}
+            disabled={loading || !question.trim()}
+            aria-label="Send message"
+          >
+            <SendIcon />
+          </button>
+        </div>
       </div>
 
-      <div className="d-flex gap-2">
-        <input
-          type="text"
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Ask a question..."
-          className="form-control bg-secondary text-light border-0"
-          disabled={loading}
-        />
-
-        <button
-          onClick={sendQuestion}
-          className="btn btn-success px-4"
-          disabled={loading || !question.trim()}
-        >
-          {loading ? "..." : "Send"}
-        </button>
-      </div>
-
-      {/* CSS for blinking cursor animation */}
-      <style>{`
-        @keyframes blink {
-          0%, 50% {
-            opacity: 1;
-          }
-          51%, 100% {
-            opacity: 0;
-          }
-        }
-        
-        .chat-container {
-          scrollbar-width: thin;
-          scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-        }
-        
-        .chat-container::-webkit-scrollbar {
-          width: 6px;
-        }
-        
-        .chat-container::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        
-        .chat-container::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 3px;
-        }
-        
-        .chat-container::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
-        }
-      `}</style>
+      <UploadPdf
+        fileInputRef={fileInputRef}
+        onUploadComplete={onUploadComplete}
+        onUploadStatus={onUploadStatus}
+      />
     </div>
   );
 };

@@ -1,73 +1,66 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import API from "../services/api";
 
-const UploadPdf = () => {
-  const [file, setFile] = useState(null);
+const formatFileSize = (bytes) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const UploadPdf = ({ fileInputRef, onUploadComplete, onUploadStatus }) => {
+  const internalRef = useRef(null);
+  const inputRef = fileInputRef || internalRef;
   const [loading, setLoading] = useState(false);
 
-  const handleUpload = async () => {
-    if (!file) {
-      alert("Please select a PDF file to upload.");
-      return;
-    }
+  const handleFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
       setLoading(true);
+      onUploadStatus?.({ type: "loading", message: `Uploading ${file.name}...` });
+
       const response = await API.post("/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      alert(response.data.message);
-      setFile(null);
+
+      onUploadComplete?.({
+        id: Date.now(),
+        name: file.name,
+        sizeLabel: formatFileSize(file.size),
+        uploadedAt: new Date().toISOString(),
+      });
+
+      onUploadStatus?.({
+        type: "success",
+        message: response.data.message || `${file.name} uploaded successfully.`,
+      });
     } catch (error) {
       console.error(error);
-      alert("Upload failed. Please try again.");
+      onUploadStatus?.({
+        type: "error",
+        message: "Upload failed. Please try again.",
+      });
     } finally {
       setLoading(false);
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
     }
   };
 
   return (
-    <div className="glass-card upload-panel" style={{ padding: '2.5rem' }}>
-      <div className="panel-header">
-        <div>
-          <h3 className="panel-title">📄 Upload Document</h3>
-          <p className="panel-subtitle">Add your PDF to start asking questions</p>
-        </div>
-        <span className="status-chip">PDF Files</span>
-      </div>
-
-      <div className="file-input-wrapper">
-        <input
-          type="file"
-          accept="application/pdf"
-          onChange={(e) => setFile(e.target.files[0])}
-          style={{
-            display: 'block',
-            textAlign: 'center',
-            padding: '2rem 1.5rem',
-          }}
-        />
-      </div>
-
-      {file && (
-        <div className="upload-file-info">
-          ✅ {file.name} ({(file.size / 1024).toFixed(1)} KB)
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={handleUpload}
-        className="btn-accent"
-        disabled={loading || !file}
-        style={{ width: '100%', marginTop: file ? '0.5rem' : '1.5rem' }}
-      >
-        {loading ? "⏳ Uploading..." : "Upload PDF"}
-      </button>
-    </div>
+    <input
+      ref={inputRef}
+      type="file"
+      accept="application/pdf"
+      className="hidden-file-input"
+      onChange={handleFileChange}
+      disabled={loading}
+    />
   );
 };
 
