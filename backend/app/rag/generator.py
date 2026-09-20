@@ -40,6 +40,7 @@ def _get_inference_client() -> InferenceClient:
 
     return InferenceClient(
         model=settings.hf_model,
+        provider=settings.hf_provider,
         token=settings.huggingfacehub_api_token,
     )
 
